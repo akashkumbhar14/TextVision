@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Text Extractor</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background: #f4f7f6;
+      }
+      .container {
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+        text-align: center;
+        width: 90%;
+        max-width: 500px;
+      }
+      .upload-area {
+        border: 2px dashed #ccc;
+        padding: 2rem;
+        cursor: pointer;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+      }
+      input[type="file"] {
+        display: none;
+      }
+      button {
+        padding: 0.8rem 1.5rem;
+        background: #3498db;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      textarea {
+        width: 100%;
+        height: 150px;
+        padding: 0.5rem;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        resize: vertical;
+        margin-top: 1rem;
+      }
+      #status {
+        margin-top: 1rem;
+        font-weight: bold;
+        color: #e67e22;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Upload Image for OCR</h1>
+      <div class="upload-area" id="uploadArea">
+        <p>Click to select or drag & drop an image</p>
+        <input type="file" id="imageInput" accept="image/*" />
+        <p id="fileName"></p>
+      </div>
+      <button id="uploadButton" onclick="uploadImage()" disabled>
+        Upload & Process
+      </button>
+      <div id="status"></div>
+      <textarea
+        id="extractedText"
+        readonly
+        placeholder="Extracted text will appear here..."
+      ></textarea>
+    </div>
+
+    <script>
+      const uploadArea = document.getElementById("uploadArea");
+      const imageInput = document.getElementById("imageInput");
+      const fileNameDisplay = document.getElementById("fileName");
+      const uploadButton = document.getElementById("uploadButton");
+      const statusDiv = document.getElementById("status");
+      const extractedText = document.getElementById("extractedText");
+
+      uploadArea.addEventListener("click", () => imageInput.click());
+
+      imageInput.addEventListener("change", () => {
+        if (imageInput.files.length > 0) {
+          fileNameDisplay.textContent = `Selected: ${imageInput.files[0].name}`;
+          uploadButton.disabled = false;
+        } else {
+          fileNameDisplay.textContent = "";
+          uploadButton.disabled = true;
+        }
+      });
+
+      ["dragenter", "dragover", "dragleave", "drop"].forEach((e) => {
+        uploadArea.addEventListener(e, (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+        });
+      });
+      uploadArea.addEventListener("dragover", () =>
+        uploadArea.classList.add("dragover")
+      );
+      uploadArea.addEventListener("dragleave", () =>
+        uploadArea.classList.remove("dragover")
+      );
+      uploadArea.addEventListener("drop", (e) => {
+        uploadArea.classList.remove("dragover");
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          const dt = new DataTransfer();
+          dt.items.add(files[0]);
+          imageInput.files = dt.files;
+          fileNameDisplay.textContent = `Selected: ${files[0].name}`;
+          uploadButton.disabled = false;
+        }
+      });
+
+      async function uploadImage() {
+        if (!imageInput.files.length) return alert("Select an image first.");
+
+        const formData = new FormData();
+        formData.append("file", imageInput.files[0]);
+
+        statusDiv.textContent = "Processing...";
+        uploadButton.disabled = true;
+
+        try {
+          const response = await fetch("/extract_text/", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error(await response.text());
+          }
+
+          const data = await response.json();
+          extractedText.value = data.extracted_text;
+          statusDiv.textContent = "✅ Processing complete!";
+        } catch (error) {
+          console.error(error);
+          statusDiv.textContent = `❌ Error: ${error.message}`;
+        } finally {
+          uploadButton.disabled = false;
+        }
+      }
+    </script>
+  </body>
+</html>

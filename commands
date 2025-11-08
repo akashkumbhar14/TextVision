@@ -1,0 +1,9 @@
+create the venv environment and install the al requirements
+
+first go wher the venv environment --
+.\venv\Scripts\activate
+
+Go till the backend folder
+uvicorn app:app --reload
+
+open the link
